@@ -1,52 +1,22 @@
-/*****************************************************************************
- * pce                                                                       *
- *****************************************************************************/
-
-/*****************************************************************************
- * File name:   src/config.h.in                                              *
- * Created:     2002-12-16 by Hampa Hug <hampa@hampa.ch>                     *
- * Copyright:   (C) 2002-2011 Hampa Hug <hampa@hampa.ch>                     *
- *****************************************************************************/
-
-/*****************************************************************************
- * This program is free software. You can redistribute it and / or modify it *
- * under the terms of the GNU General Public License version 2 as  published *
- * by the Free Software Foundation.                                          *
- *                                                                           *
- * This program is distributed in the hope  that  it  will  be  useful,  but *
- * WITHOUT  ANY   WARRANTY,   without   even   the   implied   warranty   of *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU  General *
- * Public License for more details.                                          *
- *****************************************************************************/
-
+/**
+ * src/config.h — для RP2350 (заменяет autoconf-генерируемый файл).
+ *
+ * Критичное отличие от оригинала: HAVE_STDINT_H и HAVE_INTTYPES_H
+ * определены как 1. В оригинале они были #undef, что на ARM newlib
+ * (Pico SDK) ломало резолюцию прототипов из <string.h> и <stdint.h>
+ * через механизм feature-test macros.
+ */
 
 #ifndef PCE_CONFIG_H
 #define PCE_CONFIG_H 1
 
+/* Доступно в newlib (Pico SDK) */
+#define HAVE_STDINT_H    1
+#define HAVE_INTTYPES_H  1
+#define HAVE_LIMITS_H    1
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-
-
-#ifndef _NETBSD_SOURCE
-#define _NETBSD_SOURCE 1
-#endif
-
-
-#undef PCE_LARGE_FILE
-
-#ifdef PCE_LARGE_FILE
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
-#endif
-
-
+/* POSIX — нет на RP2350 */
 #undef HAVE_FCNTL_H
-#undef HAVE_INTTYPES_H
-#undef HAVE_LIMITS_H
-#undef HAVE_STDINT_H
 #undef HAVE_TERMIOS_H
 #undef HAVE_UNISTD_H
 #undef HAVE_LINUX_IF_TUN_H
@@ -58,6 +28,7 @@
 #undef HAVE_SYS_TIME_H
 #undef HAVE_SYS_TYPES_H
 
+/* POSIX функции — заменены в rp2350_stubs.c */
 #undef HAVE_FSEEKO
 #undef HAVE_FTRUNCATE
 #undef HAVE_USLEEP
@@ -65,42 +36,29 @@
 #undef HAVE_SLEEP
 #undef HAVE_GETTIMEOFDAY
 
-#undef PCE_VERSION_MAJ
-#undef PCE_VERSION_MIN
-#undef PCE_VERSION_MIC
-#undef PCE_VERSION_STR
-
-#undef PCE_HOST_LINUX
-#undef PCE_HOST_WINDOWS
-#undef PCE_HOST_SUNOS
-#undef PCE_HOST_NETBSD
-
-#undef PCE_HOST_IA32
-#undef PCE_HOST_PPC
-#undef PCE_HOST_SPARC
-
-#undef PCE_DIR_ETC
-
-#undef PCE_BUILD_IBMPC
-
+/* Платформенные драйверы */
 #undef PCE_ENABLE_X11
-
 #undef PCE_ENABLE_SDL
-
 #undef PCE_ENABLE_READLINE
-
 #undef PCE_ENABLE_TUN
-
 #undef PCE_ENABLE_CHAR_POSIX
 #undef PCE_ENABLE_CHAR_PPP
 #undef PCE_ENABLE_CHAR_PTY
 #undef PCE_ENABLE_CHAR_SLIP
 #undef PCE_ENABLE_CHAR_TCP
 #undef PCE_ENABLE_CHAR_TIOS
-
 #undef PCE_ENABLE_SOUND_OSS
 
-/* directory separator */
+#undef PCE_HOST_LINUX
+#undef PCE_HOST_WINDOWS
+#undef PCE_HOST_IA32
+#undef PCE_HOST_PPC
+#undef PCE_HOST_SPARC
+
 #define PCE_DIR_SEP '/'
 
+#ifndef PCE_VERSION_STR
+#define PCE_VERSION_STR "0.0.0"
 #endif
+
+#endif /* PCE_CONFIG_H */

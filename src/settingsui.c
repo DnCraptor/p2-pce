@@ -1,6 +1,6 @@
 /**
- * Settings UI - on-screen settings manager for changing emulator
- * configuration at runtime. Triggered by Win+F11 hotkey.
+ * Settings UI - on-screen settings manager.
+ * Triggered by Win+F11 hotkey.
  *
  * Copyright (c) 2026 Mikhail Matveev <xtreme@rh1.tech>
  * SPDX-License-Identifier: MIT
@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include "audio.h"
 
-// Menu states
 typedef enum {
     SETTINGS_CLOSED,
     SETTINGS_MAIN,
@@ -22,21 +21,8 @@ typedef enum {
     SETTINGS_CONFIRM_SAVE
 } SettingsState;
 
-// Setting items
 typedef enum {
-    SETTING_VOL= 0,
-    SETTING_MEM,
-    SETTING_CPU,
-    SETTING_FPU,
-    SETTING_REDIRECTOR,
-    SETTING_PCSPEAKER,
-    SETTING_ADLIB,
-    SETTING_SOUNDBLASTER,
-    SETTING_MPU401,
-    SETTING_TANDY,
-    SETTING_COVOX,
-    SETTING_DSS,
-    SETTING_MOUSE,
+    SETTING_VOL = 0,
     SETTING_CPU_FREQ,
     SETTING_VOLTAGE,
     SETTING_PSRAM_FREQ,
@@ -44,21 +30,10 @@ typedef enum {
     SETTING_COUNT
 } SettingItem;
 
-// Option values
-static const int vol_options[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+static const int vol_options[]  = { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 };
 static const int vol_option_count = 17;
 
-#if EMULATE_LTEMS
-static const int mem_options[] = { 1, 2, 4, 6 };
-#else
-static const int mem_options[] = { 1, 2, 4, 8 };
-#endif
-static const int mem_option_count = 4;
-
-static const int cpu_options[] = { 3, 4, 5 };
-static const int cpu_option_count = 3;
-
-static const int cpu_freq_options[] = { 252, 378, 504, 524, 564 };
+static const int cpu_freq_options[]  = { 252, 378, 504, 524, 564 };
 static const int cpu_freq_option_count = 5;
 
 static const int psram_freq_options[] = { 66, 84, 100, 133, 166 };
@@ -67,41 +42,24 @@ static const int psram_freq_option_count = 5;
 static const int flash_freq_options[] = { 66, 84, 100, 133, 166 };
 static const int flash_freq_option_count = 5;
 
-/* Voltage options: -1 = Auto, then vreg_voltage enum values.
- * Only values meaningful for RP2350 overclocking are listed.
- * Mapping: enum value -> mV label shown in UI.
- *   -1           -> "Auto"
- *   0b01111 = 15 -> 1.30V
- *   0b10000 = 16 -> 1.35V
- *   0b10001 = 17 -> 1.40V
- *   0b10010 = 18 -> 1.50V
- *   0b10011 = 19 -> 1.60V
- *   0b10100 = 20 -> 1.65V
- */
-static const int voltage_options[]      = { -1,     15,       16,       17,       18,       19,       20 };
-static const char *voltage_labels[]     = { "Auto", "1.30V",  "1.35V",  "1.40V",  "1.50V",  "1.60V",  "1.65V" };
-static const int voltage_option_count   = 7;
+static const int voltage_options[]    = { -1,     15,      16,      17,      18,      19,      20 };
+static const char *voltage_labels[]   = { "Auto", "1.30V", "1.35V", "1.40V", "1.50V", "1.60V", "1.65V" };
+static const int voltage_option_count = 7;
 
-// State
 static SettingsState settings_state = SETTINGS_CLOSED;
 static int selected_item = 0;
 static int scroll_offset = 0;
 static bool restart_requested = false;
-static int plasma_frame = 0;  // Animation frame counter
+static int plasma_frame = 0;
 
-// Original values (to detect changes)
-static int orig_mem, orig_cpu, orig_fpu, orig_redirector;
-static int orig_pcspeaker, orig_adlib, orig_soundblaster, orig_tandy, orig_covox, orig_dss, orig_mouse, orig_mpu401;
 static int orig_cpu_freq, orig_psram_freq, orig_flash_freq, orig_volume, orig_voltage;
 
-// UI dimensions
 #define MENU_X      10
-#define MENU_Y      1
+#define MENU_Y      5
 #define MENU_W      60
-#define MENU_H      23
-#define VISIBLE_ITEMS 17
+#define MENU_H      (4 + SETTING_COUNT + 4)
+#define VISIBLE_ITEMS SETTING_COUNT
 
-// Forward declarations
 static void draw_settings_menu(void);
 static void draw_confirm_dialog(void);
 static void draw_confirm_dialog2(void);
@@ -109,174 +67,78 @@ static int find_option_index(const int *options, int count, int value);
 static void cycle_option(int direction);
 
 void settingsui_init(void) {
-    settings_state = SETTINGS_CLOSED;
+    settings_state    = SETTINGS_CLOSED;
     restart_requested = false;
 }
 
 void settingsui_open(void) {
     if (settings_state != SETTINGS_CLOSED) return;
-
-    // Store original values
-    orig_mem = config_get_mem_size_mb();
-    orig_cpu = config_get_cpu_gen();
-    orig_fpu = config_get_fpu();
-    orig_redirector = config_get_redirector();
-    orig_pcspeaker = config_get_pcspeaker();
-    orig_adlib = config_get_adlib();
-    orig_soundblaster = config_get_soundblaster();
-    orig_tandy = config_get_tandy();
-    orig_mpu401 = config_get_mpu401();
-    orig_covox = config_get_covox();
-    orig_dss = config_get_dss();
-    orig_mouse = config_get_mouse();
-    orig_cpu_freq = config_get_cpu_freq();
+    orig_volume     = audio_get_volume();
+    orig_cpu_freq   = config_get_cpu_freq();
     orig_psram_freq = config_get_psram_freq();
     orig_flash_freq = config_get_flash_freq();
-    orig_volume = audio_get_volume();
-    orig_voltage = config_get_voltage();
-
-    settings_state = SETTINGS_MAIN;
-    selected_item = 0;
-    scroll_offset = 0;
+    orig_voltage    = config_get_voltage();
+    settings_state  = SETTINGS_MAIN;
+    selected_item   = 0;
+    scroll_offset   = 0;
     osd_clear();
     osd_show();
     draw_settings_menu();
 }
 
 void settingsui_close(void) {
-    // Restore original values if not confirmed
     if (settings_state == SETTINGS_MAIN && config_has_changes()) {
-        config_set_mem_size_mb(orig_mem);
-        config_set_cpu_gen(orig_cpu);
-        config_set_fpu(orig_fpu);
-        config_set_redirector(orig_redirector);
+        audio_set_volume(orig_volume);
         config_set_cpu_freq(orig_cpu_freq);
         config_set_psram_freq(orig_psram_freq);
         config_set_flash_freq(orig_flash_freq);
         config_set_voltage(orig_voltage);
-        audio_set_volume(orig_volume);
         config_clear_changes();
     }
     settings_state = SETTINGS_CLOSED;
     osd_hide();
 }
 
-bool settingsui_is_open(void) {
-    return settings_state != SETTINGS_CLOSED;
-}
-
-bool settingsui_restart_requested(void) {
-    return restart_requested;
-}
-
-void settingsui_clear_restart(void) {
-    restart_requested = false;
-}
+bool settingsui_is_open(void)         { return settings_state != SETTINGS_CLOSED; }
+bool settingsui_restart_requested(void) { return restart_requested; }
+void settingsui_clear_restart(void)   { restart_requested = false; }
 
 static int find_option_index(const int *options, int count, int value) {
-    for (int i = 0; i < count; i++) {
-        if (options[i] == value) return i;
-    }
+    for (int i = 0; i < count; i++) if (options[i] == value) return i;
     return 0;
 }
 
 static void cycle_option(int direction) {
     int idx, count;
     const int *options;
-
     switch (selected_item) {
         case SETTING_VOL:
-            options = vol_options;
-            count = vol_option_count;
+            options = vol_options; count = vol_option_count;
             idx = find_option_index(options, count, audio_get_volume());
             idx = (idx + direction + count) % count;
             audio_set_volume(options[idx]);
             config_set_volume(options[idx]);
             break;
-
-        case SETTING_MEM:
-            options = mem_options;
-            count = mem_option_count;
-            idx = find_option_index(options, count, config_get_mem_size_mb());
-            idx = (idx + direction + count) % count;
-            config_set_mem_size_mb(options[idx]);
-            break;
-
-        case SETTING_CPU:
-            options = cpu_options;
-            count = cpu_option_count;
-            idx = find_option_index(options, count, config_get_cpu_gen());
-            idx = (idx + direction + count) % count;
-            config_set_cpu_gen(options[idx]);
-            break;
-
-        case SETTING_FPU:
-            config_set_fpu(config_get_fpu() ? 0 : 1);
-            break;
-
-        case SETTING_REDIRECTOR:
-            config_set_redirector(config_get_redirector() ? 0 : 1);
-            break;
-
-        case SETTING_PCSPEAKER:
-            config_set_pcspeaker(config_get_pcspeaker() ? 0 : 1);
-            break;
-
-        case SETTING_ADLIB:
-            config_set_adlib(config_get_adlib() ? 0 : 1);
-            break;
-
-        case SETTING_SOUNDBLASTER:
-            config_set_soundblaster(config_get_soundblaster() ? 0 : 1);
-            break;
-
-        case SETTING_TANDY:
-            config_set_tandy(config_get_tandy() ? 0 : 1);
-            break;
-
-        case SETTING_MPU401:
-            config_set_mpu401(config_get_mpu401() ? 0 : 1);
-            break;
-
-        case SETTING_COVOX:
-            config_set_covox(config_get_covox() ? 0 : 1);
-            break;
-
-        case SETTING_DSS:
-            config_set_dss(config_get_dss() ? 0 : 1);
-            break;
-
-        case SETTING_MOUSE:
-            config_set_mouse(config_get_mouse() ? 0 : 1);
-            break;
-
         case SETTING_CPU_FREQ:
-            options = cpu_freq_options;
-            count = cpu_freq_option_count;
+            options = cpu_freq_options; count = cpu_freq_option_count;
             idx = find_option_index(options, count, config_get_cpu_freq());
             idx = (idx + direction + count) % count;
             config_set_cpu_freq(options[idx]);
             break;
-
         case SETTING_VOLTAGE:
-            options = voltage_options;
-            count = voltage_option_count;
+            options = voltage_options; count = voltage_option_count;
             idx = find_option_index(options, count, config_get_voltage());
             idx = (idx + direction + count) % count;
             config_set_voltage(options[idx]);
             break;
-
         case SETTING_PSRAM_FREQ:
-            options = psram_freq_options;
-            count = psram_freq_option_count;
+            options = psram_freq_options; count = psram_freq_option_count;
             idx = find_option_index(options, count, config_get_psram_freq());
             idx = (idx + direction + count) % count;
             config_set_psram_freq(options[idx]);
             break;
-
         case SETTING_FLASH_FREQ:
-            options = flash_freq_options;
-            count = flash_freq_option_count;
+            options = flash_freq_options; count = flash_freq_option_count;
             idx = find_option_index(options, count, config_get_flash_freq());
             idx = (idx + direction + count) % count;
             config_set_flash_freq(options[idx]);
@@ -285,29 +147,13 @@ static void cycle_option(int direction) {
 }
 
 static void draw_settings_menu(void) {
-    // Draw plasma background (animated) - covers everything outside window
     osd_draw_plasma_background(plasma_frame * 3, MENU_X, MENU_Y, MENU_W, MENU_H);
-
-    // Draw box with title on border
     osd_draw_box(MENU_X, MENU_Y, MENU_W, MENU_H, OSD_ATTR_BORDER);
     osd_fill(MENU_X + 1, MENU_Y + 1, MENU_W - 2, MENU_H - 2, ' ', OSD_ATTR_NORMAL);
     osd_print_center(MENU_Y, " Settings ", OSD_ATTR(OSD_YELLOW, OSD_BLUE));
 
-    // Settings items
     const char *labels[] = {
         "Volume:",
-        "RAM Size:",
-        "CPU Type:",
-        "FPU (387):",
-        "SD cart as H drive:",
-        "PC Speaker:",
-        "AdLib:",
-        "SoundBlaster:",
-        "Roland MPU-401:",
-        "Tandy Sound:",
-        "Covox (LPT2):",
-        "Disney Sound Source:",
-        "Mouse:",
         "RP2350 Freq:",
         "CPU Voltage:",
         "PSRAM Freq:",
@@ -315,203 +161,105 @@ static void draw_settings_menu(void) {
     };
     char value[24];
 
-    for (int i = 0; i < SETTING_COUNT && i < VISIBLE_ITEMS; i++) {
-        int setting_idx = i + scroll_offset;
-        if (setting_idx >= SETTING_COUNT) break;
-
+    for (int i = 0; i < SETTING_COUNT; i++) {
         int y = MENU_Y + 2 + i;
-        uint8_t attr = (setting_idx == selected_item) ? OSD_ATTR_SELECTED : OSD_ATTR_NORMAL;
-
+        uint8_t attr = (i == selected_item) ? OSD_ATTR_SELECTED : OSD_ATTR_NORMAL;
         osd_fill(MENU_X + 2, y, MENU_W - 4, 1, ' ', attr);
-        osd_print(MENU_X + 3, y, labels[setting_idx], attr);
-
-        // Format value
-        switch (setting_idx) {
+        osd_print(MENU_X + 3, y, labels[i], attr);
+        switch (i) {
             case SETTING_VOL:
-                snprintf(value, sizeof(value), "< %d >", audio_get_volume());
-                break;
-            case SETTING_MEM:
-                snprintf(value, sizeof(value), "< %d MB >", config_get_mem_size_mb());
-                break;
-            case SETTING_CPU:
-                snprintf(value, sizeof(value), "< 80%d86 >", config_get_cpu_gen());
-                break;
-            case SETTING_FPU:
-                snprintf(value, sizeof(value), "< %s >", config_get_fpu() ? "Enabled" : "Disabled");
-                break;
-            case SETTING_REDIRECTOR:
-                snprintf(value, sizeof(value), "< %s >", config_get_redirector() ? "Enabled" : "Disabled");
-                break;
-            case SETTING_PCSPEAKER:
-                snprintf(value, sizeof(value), "< %s >", config_get_pcspeaker() ? "Enabled" : "Disabled");
-                break;
-            case SETTING_ADLIB:
-                snprintf(value, sizeof(value), "< %s >", config_get_adlib() ? "Enabled" : "Disabled");
-                break;
-            case SETTING_SOUNDBLASTER:
-                snprintf(value, sizeof(value), "< %s >", config_get_soundblaster() ? "Enabled" : "Disabled");
-                break;
-            case SETTING_TANDY:
-                snprintf(value, sizeof(value), "< %s >", config_get_tandy() ? "Enabled" : "Disabled");
-                break;
-            case SETTING_MPU401:
-                snprintf(value, sizeof(value), "< %s >", config_get_mpu401() ? "Enabled" : "Disabled");
-                break;
-            case SETTING_COVOX:
-                snprintf(value, sizeof(value), "< %s >", config_get_covox() ? "Enabled" : "Disabled");
-                break;
-            case SETTING_DSS:
-                snprintf(value, sizeof(value), "< %s >", config_get_dss() ? "Enabled" : "Disabled");
-                break;
-            case SETTING_MOUSE:
-                snprintf(value, sizeof(value), "< %s >", config_get_mouse() ? "Enabled" : "Disabled");
-                break;
+                snprintf(value, sizeof(value), "< %d >", audio_get_volume()); break;
             case SETTING_CPU_FREQ:
-                snprintf(value, sizeof(value), "< %d MHz >", config_get_cpu_freq());
-                break;
+                snprintf(value, sizeof(value), "< %d MHz >", config_get_cpu_freq()); break;
             case SETTING_VOLTAGE: {
                 int idx = find_option_index(voltage_options, voltage_option_count, config_get_voltage());
-                snprintf(value, sizeof(value), "< %s >", voltage_labels[idx]);
-                break;
+                snprintf(value, sizeof(value), "< %s >", voltage_labels[idx]); break;
             }
             case SETTING_PSRAM_FREQ:
-                snprintf(value, sizeof(value), "< %d MHz >", config_get_psram_freq());
-                break;
+                snprintf(value, sizeof(value), "< %d MHz >", config_get_psram_freq()); break;
             case SETTING_FLASH_FREQ:
-                snprintf(value, sizeof(value), "< %d MHz >", config_get_flash_freq());
-                break;
+                snprintf(value, sizeof(value), "< %d MHz >", config_get_flash_freq()); break;
         }
-        osd_print(MENU_X + 25, y, value, attr);
+        osd_print(MENU_X + 26, y, value, attr);
     }
 
-    // Show if changes pending
-    if (config_has_changes()) {
-        osd_print(MENU_X + 3, MENU_Y + MENU_H - 4, "* Changes pending - Enter to apply", OSD_ATTR_HIGHLIGHT);
-    }
+    if (config_has_changes())
+        osd_print(MENU_X + 3, MENU_Y + MENU_H - 4, "* Changes pending - Enter to save+restart", OSD_ATTR_HIGHLIGHT);
 
-    // Help
-    osd_print(MENU_X + 2, MENU_Y + MENU_H - 2, "\x18\x19:Select  \x1b\x1a:Change  Enter:Apply  Esc:Cancel", OSD_ATTR_HIGHLIGHT);
+    osd_print(MENU_X + 2, MENU_Y + MENU_H - 2,
+              "\x18\x19:Select  \x1b\x1a:Change  Enter:Apply  Esc:Cancel",
+              OSD_ATTR_HIGHLIGHT);
 }
 
 static void draw_confirm_dialog(void) {
     int dx = 20, dy = 10, dw = 40, dh = 5;
-    // Draw dialog box with red background (no shadow)
-    uint8_t dialog_attr = OSD_ATTR(OSD_WHITE, OSD_RED);
-    osd_draw_box(dx, dy, dw, dh, dialog_attr);
-    osd_fill(dx + 1, dy + 1, dw - 2, dh - 2, ' ', dialog_attr);
-    osd_print(dx + 3, dy + 2, "Save settings and restart? (Y/N)", dialog_attr);
+    uint8_t da = OSD_ATTR(OSD_WHITE, OSD_RED);
+    osd_draw_box(dx, dy, dw, dh, da);
+    osd_fill(dx+1, dy+1, dw-2, dh-2, ' ', da);
+    osd_print(dx+3, dy+2, "Save settings and restart? (Y/N)", da);
 }
 
 static void draw_confirm_dialog2(void) {
     int dx = 20, dy = 10, dw = 40, dh = 5;
-    // Draw dialog box with red background (no shadow)
-    uint8_t dialog_attr = OSD_ATTR(OSD_WHITE, OSD_RED);
-    osd_draw_box(dx, dy, dw, dh, dialog_attr);
-    osd_fill(dx + 1, dy + 1, dw - 2, dh - 2, ' ', dialog_attr);
-    osd_print(dx + 3, dy + 2, "Save settings no-restart? (Y/N)", dialog_attr);
+    uint8_t da = OSD_ATTR(OSD_WHITE, OSD_RED);
+    osd_draw_box(dx, dy, dw, dh, da);
+    osd_fill(dx+1, dy+1, dw-2, dh-2, ' ', da);
+    osd_print(dx+3, dy+2, "Discard changes and close? (Y/N)", da);
 }
 
 bool settingsui_handle_key(int keycode, bool is_down) {
     if (!is_down) return true;
-
     switch (settings_state) {
         case SETTINGS_MAIN:
             switch (keycode) {
                 case KEY_UP:
-                    if (selected_item > 0) {
-                        selected_item--;
-                    } else {
-                        // Wrap to last item
-                        selected_item = SETTING_COUNT - 1;
-                        scroll_offset = SETTING_COUNT - VISIBLE_ITEMS;
-                        if (scroll_offset < 0) scroll_offset = 0;
-                    }
-                    // Adjust scroll if needed
-                    if (selected_item < scroll_offset) {
-                        scroll_offset = selected_item;
-                    }
-                    draw_settings_menu();
-                    break;
-
+                    selected_item = (selected_item > 0) ? selected_item - 1 : SETTING_COUNT - 1;
+                    draw_settings_menu(); break;
                 case KEY_DOWN:
-                    if (selected_item < SETTING_COUNT - 1) {
-                        selected_item++;
-                    } else {
-                        // Wrap to first item
-                        selected_item = 0;
-                        scroll_offset = 0;
-                    }
-                    // Adjust scroll if needed
-                    if (selected_item >= scroll_offset + VISIBLE_ITEMS) {
-                        scroll_offset = selected_item - VISIBLE_ITEMS + 1;
-                    }
-                    draw_settings_menu();
-                    break;
-
-                case KEY_LEFT:
-                    cycle_option(-1);
-                    draw_settings_menu();
-                    break;
-
-                case KEY_RIGHT:
-                    cycle_option(1);
-                    draw_settings_menu();
-                    break;
-
+                    selected_item = (selected_item < SETTING_COUNT - 1) ? selected_item + 1 : 0;
+                    draw_settings_menu(); break;
+                case KEY_LEFT:  cycle_option(-1); draw_settings_menu(); break;
+                case KEY_RIGHT: cycle_option(+1); draw_settings_menu(); break;
                 case KEY_ENTER:
                     if (config_has_changes()) {
                         settings_state = SETTINGS_CONFIRM_SAVE_RESTART;
                         draw_confirm_dialog();
-                    } else {
-                        settingsui_close();
-                    }
+                    } else settingsui_close();
                     break;
-
                 case KEY_ESC:
                     if (config_has_changes()) {
                         settings_state = SETTINGS_CONFIRM_SAVE;
                         draw_confirm_dialog2();
-                    } else {
-                        settingsui_close();
-                    }
+                    } else settingsui_close();
                     break;
             }
             break;
-
         case SETTINGS_CONFIRM_SAVE_RESTART:
-            // Y = 21, N = 49
             if (keycode == 21) {  // Y
                 config_save_all();
                 restart_requested = true;
                 settings_state = SETTINGS_CLOSED;
                 osd_hide();
-            } else if (keycode == 49 || keycode == KEY_ESC) {  // N or Escape
+            } else if (keycode == 49 || keycode == KEY_ESC) {
                 settings_state = SETTINGS_MAIN;
                 draw_settings_menu();
             }
             break;
-
         case SETTINGS_CONFIRM_SAVE:
-            // Y = 21, N = 49
             if (keycode == 21) {  // Y
-                config_save_all();
-                settings_state = SETTINGS_CLOSED;
-                osd_hide();
-            } else if (keycode == 49 || keycode == KEY_ESC) {  // N or Escape
                 settingsui_close();
+            } else if (keycode == 49 || keycode == KEY_ESC) {
+                settings_state = SETTINGS_MAIN;
+                draw_settings_menu();
             }
             break;
-
-        default:
-            break;
+        default: break;
     }
-
     return true;
 }
 
 void settingsui_animate(void) {
     if (settings_state == SETTINGS_CLOSED) return;
     plasma_frame++;
-    // Only update plasma background, not the window content
     osd_draw_plasma_background(plasma_frame * 3, MENU_X, MENU_Y, MENU_W, MENU_H);
 }

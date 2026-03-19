@@ -27,10 +27,9 @@ if(DEFINED BOARD_VARIANT AND NOT DEFINED BOARD)
 endif()
 
 # CPU overclock configuration (252, 378, 504 MHz)
-# 252 - very basic overclock, 378 = stable overclock, 504 = high overclock
 set(CPU_SPEED "504" CACHE STRING "CPU clock in MHz: 378, 504")
 
-# PSRAM speed configuration (133, 166 MHz target)
+# PSRAM speed configuration
 set(PSRAM_SPEED "66" CACHE STRING "PSRAM max frequency in MHz: 66, 84, 100, 133, 166")
 
 # Audio output configuration (I2S or PWM)
@@ -38,16 +37,16 @@ set(AUDIO_TYPE "PWM" CACHE STRING "Audio output: I2S or PWM")
 # DVI audio
 set(DVI_A OFF)
 
-# Enable LTEMM support (performance degradation is expected)
+# Enable LTEMM support
 option(EMM "Enable LTEMM support" OFF)
 
-# USB HID keyboard support (disabled by default to keep USB CDC for debug)
+# USB HID keyboard support
 option(USB_HID_ENABLED "Enable USB HID keyboard (disables USB CDC stdio)" ON)
 
-# Debug output (disabled by default for cleaner console)
+# Debug output
 option(DEBUG_ENABLED "Enable verbose debug output" OFF)
 
-# Profiling (for performance analysis)
+# Profiling
 option(PROFILE_ENABLED "Enable instruction profiling" OFF)
 
 if(BOARD STREQUAL "M1")
@@ -78,9 +77,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 
 project(${BUILD_NAME} C CXX ASM)
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_EXTENSIONS ON)  # gnu11 вместо c11 — нужно для newlib POSIX-функций
 set(CMAKE_CXX_STANDARD 17)
 
-# Read version from version.txt (format: "MAJOR MINOR" e.g. "1 0 0" = v1.0.0)
+# Read version from version file
 file(READ "${CMAKE_CURRENT_LIST_DIR}/version" VERSION_CONTENT)
 string(STRIP "${VERSION_CONTENT}" VERSION_CONTENT)
 string(REPLACE " " ";" VERSION_LIST "${VERSION_CONTENT}")
@@ -115,7 +115,6 @@ target_include_directories(sdcard PUBLIC drivers/sdcard drivers/fatfs src)
 target_compile_definitions(sdcard PRIVATE
     BOARD_${BOARD}
     RP2350_BUILD=1
-    # SDCARD_PIO=1  # Disabled - use hardware SPI instead
 )
 target_link_libraries(sdcard pico_stdlib hardware_spi hardware_pio hardware_dma)
 pico_generate_pio_header(sdcard ${CMAKE_CURRENT_LIST_DIR}/drivers/sdcard/spi.pio)
@@ -128,11 +127,8 @@ add_library(ps2kbd
     drivers/ps2kbd/ps2kbd_wrapper.cpp
 )
 target_include_directories(ps2kbd PUBLIC drivers/ps2kbd src)
-target_compile_definitions(ps2kbd PRIVATE
-    BOARD_${BOARD}
-)
+target_compile_definitions(ps2kbd PRIVATE BOARD_${BOARD})
 target_link_libraries(ps2kbd pico_stdlib hardware_pio)
-# Generate PIO headers for both M1 and M2 board variants
 pico_generate_pio_header(ps2kbd ${CMAKE_CURRENT_LIST_DIR}/drivers/ps2kbd/ps2kbd_mrmltr.pio)
 pico_generate_pio_header(ps2kbd ${CMAKE_CURRENT_LIST_DIR}/drivers/ps2kbd/ps2kbd_mrmltr2.pio)
 
@@ -143,9 +139,7 @@ add_library(ps2mouse
     drivers/ps2mouse/ps2mouse.c
 )
 target_include_directories(ps2mouse PUBLIC drivers/ps2mouse src)
-target_compile_definitions(ps2mouse PRIVATE
-    BOARD_${BOARD}
-)
+target_compile_definitions(ps2mouse PRIVATE BOARD_${BOARD})
 target_link_libraries(ps2mouse pico_stdlib hardware_gpio)
 
 #=============================================================================
@@ -181,22 +175,17 @@ else()
     )
 endif()
 target_include_directories(video_driver PUBLIC drivers/vga drivers/hdmi src)
-target_compile_definitions(video_driver PRIVATE
-    BOARD_${BOARD}
-    RP2350_BUILD=1
-)
+target_compile_definitions(video_driver PRIVATE BOARD_${BOARD} RP2350_BUILD=1)
 target_link_libraries(video_driver pico_stdlib hardware_dma hardware_pio hardware_clocks hardware_sync)
 
 #=============================================================================
-# I2S Audio Driver
+# I2S/PWM Audio Driver
 #=============================================================================
 add_library(audio_driver
     drivers/audio/audio.c
 )
 target_include_directories(audio_driver PUBLIC drivers/audio src)
-target_compile_definitions(audio_driver PRIVATE
-    BOARD_${BOARD}
-)
+target_compile_definitions(audio_driver PRIVATE BOARD_${BOARD})
 pico_generate_pio_header(audio_driver ${CMAKE_CURRENT_LIST_DIR}/drivers/audio/audio_i2s.pio)
 if(AUDIO_TYPE STREQUAL "I2S")
     target_link_libraries(audio_driver pico_stdlib hardware_dma hardware_pio hardware_clocks hardware_sync hardware_irq)
@@ -209,7 +198,6 @@ endif()
 if (DVI_A)
     add_subdirectory(drivers/libdvi)
 endif()
-
 
 #=============================================================================
 # USB HID Keyboard Driver (optional)
@@ -226,18 +214,92 @@ endif()
 # Core Emulator Sources
 #=============================================================================
 set(EMU_CORE_SOURCES
-    # CPU and core
-    src/arch/macplus/main.c
+    # RP2350 platform integration
+    src/rp2350_stubs.c
+    src/rp2350_ini.c
+    src/rp2350_mac.c
+
+    # Mac arch
     src/arch/macplus/macplus.c
-    # PCE Drivers
-    src/drivers/video/keys.c
-    # Mac chipset
+    src/arch/macplus/adb.c
+    src/arch/macplus/adb_keyboard.c
+    src/arch/macplus/adb_mouse.c
+    src/arch/macplus/cmd_68k.c
+    src/arch/macplus/hook.c
+    src/arch/macplus/hotkey.c
+    src/arch/macplus/iwm.c
+    src/arch/macplus/iwm-io.c
+    src/arch/macplus/keyboard.c
+    src/arch/macplus/mem.c
+    src/arch/macplus/msg.c
+    src/arch/macplus/rtc.c
+    src/arch/macplus/scsi.c
+    src/arch/macplus/serial.c
+    src/arch/macplus/sony.c
+    src/arch/macplus/sound.c
+    src/arch/macplus/traps.c
+    src/arch/macplus/video.c
+
+    # PCE chipset + CPU
     src/chipset/e8530.c
     src/chipset/e6522.c
     src/cpu/e68000/e68000.c
-    # Devices
+    src/cpu/e68000/opcodes.c     # e68_set_opcodes
+    src/cpu/e68000/cc.c          # e68_cc_set_*
+    src/cpu/e68000/ea.c
+
+    # PCE devices
     src/devices/memory.c
     src/devices/nvram.c
+
+    # PCE lib
+    # log/sysdep/console/path заменены rp2350_stubs.c — НЕ включать их сюда
+    src/lib/brkpt.c
+    src/lib/inidsk.c
+    src/lib/iniram.c
+    src/lib/load.c
+    src/lib/ihex.c               # ihex_load_fp (из load.c)
+    src/lib/srec.c               # srec_load_fp (из load.c)
+    src/lib/msg.c                # msg_get_uint/bool/sint
+    src/lib/monitor.c            # mon_set_terminate
+    src/lib/string.c             # str_cat_alloc
+    src/lib/initerm.c            # ini_get_terminal -> возвращает NULL (trm=NULL headless)
+
+    # PCE drivers
+    src/drivers/options.c        # drv_get_option*
+    src/drivers/video/keys.c
+    src/drivers/video/terminal.c
+    src/drivers/video/null.c
+    src/drivers/block/block.c
+    src/drivers/block/blkcow.c
+    src/drivers/block/blkfdc.c
+    src/drivers/block/blkpce.c
+    src/drivers/block/blkqed.c
+    src/drivers/block/blkram.c
+    src/drivers/block/blkraw.c
+    src/drivers/block/blkpart.c
+    src/drivers/block/blkdosem.c
+    src/drivers/pfdc/pfdc.c
+    src/drivers/pfdc/pfdc-img.c
+    src/drivers/pbit/pbit.c
+    src/drivers/pbit/pbit-io.c
+    src/drivers/pbit/pbit-io-pbit.c
+    src/drivers/pbit/pbit-io-tc.c
+    src/drivers/pbit/gcr-mac.c
+    src/drivers/pbit/mfm-ibm.c
+    src/drivers/sound/sound.c
+    src/drivers/sound/filter.c
+    src/drivers/sound/snd_null.c
+    src/drivers/char/char.c
+
+    # libini
+    src/libini/read.c
+    src/libini/write.c
+    src/libini/scanner.c
+    src/libini/section.c
+    src/libini/strings.c
+    src/libini/value.c
+    src/libini/expr.c
 )
 
 #=============================================================================
@@ -246,8 +308,6 @@ set(EMU_CORE_SOURCES
 add_executable(${BUILD_NAME}
     src/main.c
     src/ini.c
-#    src/platform_rp2350.c
-#    src/stubs_rp2350.c
     src/diskui.c
     src/settingsui.c
     src/config_save.c
@@ -257,6 +317,13 @@ add_executable(${BUILD_NAME}
 target_include_directories(${BUILD_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/src
+    ${CMAKE_CURRENT_LIST_DIR}/src/arch/macplus
+    ${CMAKE_CURRENT_LIST_DIR}/src/libini
+    ${CMAKE_CURRENT_LIST_DIR}/src/lib
+    ${CMAKE_CURRENT_LIST_DIR}/src/cpu/e68000
+    ${CMAKE_CURRENT_LIST_DIR}/src/chipset
+    ${CMAKE_CURRENT_LIST_DIR}/src/devices
+    ${CMAKE_CURRENT_LIST_DIR}/src/drivers
     ${CMAKE_CURRENT_LIST_DIR}/drivers/fatfs
     ${CMAKE_CURRENT_LIST_DIR}/drivers/sdcard
     ${CMAKE_CURRENT_LIST_DIR}/drivers/ps2kbd
@@ -266,7 +333,6 @@ target_include_directories(${BUILD_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/drivers/hdmi
     ${CMAKE_CURRENT_LIST_DIR}/drivers/audio
 )
-# Only include usbhid directory when USB HID is enabled (to avoid tusb_config.h conflicts)
 if(USB_HID_ENABLED)
     target_include_directories(${BUILD_NAME} PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/drivers/usbhid
@@ -285,42 +351,39 @@ if(DVI_A)
         PICO_CORE1_STACK_SIZE=0x200
     )
 endif()
-
 if(EMM)
     target_compile_definitions(${BUILD_NAME} PRIVATE EMULATE_LTEMS=1)
 endif()
+
 target_compile_definitions(${BUILD_NAME} PRIVATE
-    # Version information
     PCE_VERSION_MAJOR=${PCE_VERSION_MAJOR}
     PCE_VERSION_MINOR=${PCE_VERSION_MINOR}
     PCE_VERSION_ITERATION=${PCE_VERSION_ITERATION}
     PCE_VERSION_STR="${PCE_VERSION_STR}"
 
-    # Board configuration
     BOARD_${BOARD}
     BOARD_VARIANT_STR="${BOARD}"
     CPU_CLOCK_MHZ=${CPU_SPEED}
     CPU_VOLTAGE=${CPU_VOLTAGE}
     PSRAM_MAX_FREQ_MHZ=${PSRAM_SPEED}
 
-    # Platform identification
     PICO_ON_DEVICE=1
     RP2350_BUILD=1
+    PICO_RP2350=1
 
     SOUND_FREQUENCY=44100
+
+    # config.h stubs - всё уndef, нужное задано выше
+    PCE_DIR_SEP='/'
 )
 
-# Add DEBUG_ENABLED if enabled
 if(DEBUG_ENABLED)
     target_compile_definitions(${BUILD_NAME} PRIVATE DEBUG_ENABLED=1)
 endif()
-
-# Add PROFILE_IT if profiling enabled
 if(PROFILE_ENABLED)
     target_compile_definitions(${BUILD_NAME} PRIVATE PROFILE_IT=1)
 endif()
 
-# Compiler optimizations for performance
 target_compile_options(${BUILD_NAME} PRIVATE
     -O3
     -ffunction-sections
@@ -352,13 +415,11 @@ if(DVI_A)
     target_link_libraries(${BUILD_NAME} libdvi)
 endif()
 
-# USB configuration: USB HID uses Host mode which disables CDC
 if(USB_HID_ENABLED)
     message(STATUS "USB HID enabled: Using UART for stdio (USB is Host mode for keyboard)")
     pico_enable_stdio_usb(${BUILD_NAME} 0)
     pico_enable_stdio_uart(${BUILD_NAME} 0)
 else()
-    # USB Serial console (when USB HID is disabled)
     pico_enable_stdio_usb(${BUILD_NAME} 1)
     pico_enable_stdio_uart(${BUILD_NAME} 0)
 endif()
@@ -380,7 +441,6 @@ message(STATUS "  Debug Output:   ${DEBUG_ENABLED}")
 message(STATUS "  Build Name:     ${BUILD_NAME}")
 message(STATUS "")
 
-# Create UF2 output
 pico_add_extra_outputs(${BUILD_NAME})
 
 target_link_options(${BUILD_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections -Wl,--gc-sections)
