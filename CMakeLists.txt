@@ -228,6 +228,7 @@ endif()
 set(EMU_CORE_SOURCES
     # CPU and core
     src/arch/macplus/main.c
+    src/arch/macplus/macplus.c
     # PCE Drivers
     src/drivers/video/keys.c
     # Mac chipset
