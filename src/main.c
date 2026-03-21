@@ -493,7 +493,7 @@ static bool init_hardware(void) {
     // Load [pce] hardware settings for clock reconfigure
     {
         FIL fp;
-        if (f_open(&fp, "pce/config.ini", FA_READ) == FR_OK) {
+        if (f_open(&fp, "pce/hardware.ini", FA_READ) == FR_OK) {
             FSIZE_t size = f_size(&fp);
             char *content = malloc(size + 1);
             if (content) {
@@ -505,9 +505,9 @@ static bool init_hardware(void) {
                 free(content);
             }
             f_close(&fp);
-            DBG_PRINT("  Loaded config.ini\n");
+            DBG_PRINT("  Loaded hardware.ini\n");
         } else {
-            show_warning_screen(" Warning ", "config.ini not found, using defaults.", 2000);
+            show_warning_screen(" Warning ", "hardware.ini not found, using defaults.", 2000);
         }
 
         int cfg_cpu = config_get_cpu_freq();
