@@ -44,7 +44,7 @@ option(EMM "Enable LTEMM support" OFF)
 option(USB_HID_ENABLED "Enable USB HID keyboard (disables USB CDC stdio)" ON)
 
 # Debug output
-option(DEBUG_ENABLED "Enable verbose debug output" OFF)
+option(DEBUG_ENABLED "Enable verbose debug output" ON)
 
 # Profiling
 option(PROFILE_ENABLED "Enable instruction profiling" OFF)
@@ -216,6 +216,7 @@ endif()
 set(EMU_CORE_SOURCES
     # RP2350 platform integration
     src/rp2350_stubs.c
+    src/fatfs_retarget.c
     src/rp2350_ini.c
     src/rp2350_mac.c
 
@@ -440,6 +441,27 @@ message(STATUS "  USB HID:        ${USB_HID_ENABLED}")
 message(STATUS "  Debug Output:   ${DEBUG_ENABLED}")
 message(STATUS "  Build Name:     ${BUILD_NAME}")
 message(STATUS "")
+
+target_link_options(${BUILD_NAME} PRIVATE
+    -Wl,--wrap=fopen
+    -Wl,--wrap=fclose
+    -Wl,--wrap=fread
+    -Wl,--wrap=fwrite
+    -Wl,--wrap=fseek
+    -Wl,--wrap=ftell
+    -Wl,--wrap=rewind
+    -Wl,--wrap=feof
+    -Wl,--wrap=ferror
+    -Wl,--wrap=clearerr
+    -Wl,--wrap=fflush
+    -Wl,--wrap=fgetc
+    -Wl,--wrap=ungetc
+    -Wl,--wrap=fputc
+    -Wl,--wrap=fputs
+    -Wl,--wrap=fgets
+    -Wl,--wrap=fprintf
+    -Wl,--wrap=vfprintf
+)
 
 pico_add_extra_outputs(${BUILD_NAME})
 

@@ -13,7 +13,8 @@
 #include <stdio.h>
 
 #ifdef DEBUG_ENABLED
-#define DBG_PRINT(...) printf(__VA_ARGS__)
+void debug_log(const char *fmt, ...);
+#define DBG_PRINT(...) debug_log(__VA_ARGS__)
 #else
 #define DBG_PRINT(...) ((void)0)
 #endif

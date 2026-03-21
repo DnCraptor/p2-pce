@@ -16,18 +16,54 @@
 #include "pico/stdlib.h"
 #include "debug.h"
 
+#include <ff.h>
+#include <stdarg.h>
+static FIL _2f_tf;
+static int _2f_tf_open = 0;
+void debug_log(const char *fmt, ...) {
+    if (!_2f_tf_open) {
+        _2f_tf_open = (f_open(&_2f_tf, "pce/log.txt", FA_WRITE | FA_OPEN_APPEND | FA_OPEN_ALWAYS) == FR_OK);
+    }
+    if (!_2f_tf_open) return;
+    char buf[256];
+    va_list ap;
+    va_start(ap, fmt);
+    int len = vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    if (len < 0) return;
+    if (len > (int)sizeof(buf)) len = sizeof(buf);
+    UINT bw;
+    f_write(&_2f_tf, buf, len, &bw);
+    f_sync(&_2f_tf);
+}
+
+/* ------------------------------------------------------------------ */
+/* Вспомогательная функция: DBG_PRINT через va_list                   */
+/* ------------------------------------------------------------------ */
+/* DBG_PRINT принимает только compile-time fmt. Для функций которые
+ * получают va_list, форматируем в буфер и передаём как строку. */
+
+static void dbg_vprint(const char *fmt, va_list va)
+{
+#ifdef DEBUG_ENABLED
+    char buf[256];
+    vsnprintf(buf, sizeof(buf), fmt, va);
+    DBG_PRINT("%s", buf);
+#else
+    (void)fmt; (void)va;
+#endif
+}
+
 /* ------------------------------------------------------------------ */
 /* sysdep.h stubs                                                      */
 /* ------------------------------------------------------------------ */
 
-/* На RP2350 нет POSIX — заменяем на pico sleep */
 int pce_usleep(unsigned long usec)
 {
     sleep_us(usec);
     return 0;
 }
 
-/* Интервальный таймер через time_us_32 */
 unsigned long pce_get_interval_us(unsigned long *val)
 {
     unsigned long now = time_us_32();
@@ -36,48 +72,33 @@ unsigned long pce_get_interval_us(unsigned long *val)
     return delta;
 }
 
-/* На RP2350 нет терминала — ничего не делаем */
 void pce_set_fd_interactive(int fd, int interactive)
 {
-    (void)fd;
-    (void)interactive;
+    (void)fd; (void)interactive;
 }
 
 int pce_fd_readable(int fd, int t)
 {
-    (void)fd;
-    (void)t;
+    (void)fd; (void)t;
     return 0;
 }
 
 int pce_fd_writeable(int fd, int t)
 {
-    (void)fd;
-    (void)t;
+    (void)fd; (void)t;
     return 0;
 }
 
-/* pce_start/pce_stop: в mac_run сбрасывают brk и настраивают tty.
- * На RP2350 только сброс brk нужен — это делается в mac_run самостоятельно. */
 void pce_start(unsigned *brk)
 {
-    if (brk != NULL) {
-        *brk = 0;
-    }
+    if (brk != NULL) *brk = 0;
 }
 
-void pce_stop(void)
-{
-    /* ничего */
-}
+void pce_stop(void) {}
 
 /* ------------------------------------------------------------------ */
 /* pce_log (log.h) → DBG_PRINT                                        */
 /* ------------------------------------------------------------------ */
-/* log.c не компилируется — там fopen/fclose на файловую систему хоста.
- * На RP2350 весь вывод идёт через DBG_PRINT → stdio (UART/USB). */
-
-#define PCE_LOG_MAX 16
 
 void pce_log_init(void) {}
 void pce_log_done(void) {}
@@ -94,61 +115,46 @@ int pce_log_add_fname(const char *fname, unsigned level)
     return 0;
 }
 
-void pce_log_rmv_fp(void *fp) { (void)fp; }
-void pce_log_set_level(void *fp, unsigned level) { (void)fp; (void)level; }
-unsigned pce_log_get_level(void *fp) { (void)fp; return 3; }
+void pce_log_rmv_fp(void *fp)                      { (void)fp; }
+void pce_log_set_level(void *fp, unsigned level)   { (void)fp; (void)level; }
+unsigned pce_log_get_level(void *fp)               { (void)fp; return 3; }
 
 void pce_log(unsigned level, const char *msg, ...)
 {
-#ifdef DEBUG_ENABLED
+    (void)level;
     va_list va;
     va_start(va, msg);
-    vprintf(msg, va);
+    dbg_vprint(msg, va);
     va_end(va);
-#else
-    (void)level; (void)msg;
-#endif
 }
 
 void pce_log_va(unsigned level, const char *msg, va_list va)
 {
-#ifdef DEBUG_ENABLED
-    vprintf(msg, va);
-#else
-    (void)level; (void)msg; (void)va;
-#endif
+    (void)level;
+    dbg_vprint(msg, va);
 }
 
 void pce_log_deb(const char *msg, ...)
 {
-#ifdef DEBUG_ENABLED
     va_list va;
     va_start(va, msg);
-    vprintf(msg, va);
+    dbg_vprint(msg, va);
     va_end(va);
-#else
-    (void)msg;
-#endif
 }
 
 void pce_log_tag(unsigned level, const char *tag, const char *msg, ...)
 {
-#ifdef DEBUG_ENABLED
+    (void)level;
+    DBG_PRINT("[%s] ", tag);
     va_list va;
-    printf("[%s] ", tag);
     va_start(va, msg);
-    vprintf(msg, va);
+    dbg_vprint(msg, va);
     va_end(va);
-#else
-    (void)level; (void)tag; (void)msg;
-#endif
 }
 
 /* ------------------------------------------------------------------ */
-/* console.h stubs (pce_puts / pce_console_*)                         */
+/* console.h stubs                                                     */
 /* ------------------------------------------------------------------ */
-/* lib/console.c использует stdin/stdout для интерактивного монитора.
- * На RP2350 монитора нет — заглушаем. */
 
 void pce_puts(const char *str)
 {
@@ -157,37 +163,25 @@ void pce_puts(const char *str)
 
 void pce_printf(const char *fmt, ...)
 {
-#ifdef DEBUG_ENABLED
     va_list va;
     va_start(va, fmt);
-    vprintf(fmt, va);
+    dbg_vprint(fmt, va);
     va_end(va);
-#else
-    (void)fmt;
-#endif
 }
 
-void pce_console_init(void *inp, void *out)
-{
-    (void)inp; (void)out;
-}
-
+void pce_console_init(void *inp, void *out) { (void)inp; (void)out; }
 void pce_console_done(void) {}
 
 /* ------------------------------------------------------------------ */
 /* path.h stubs                                                        */
 /* ------------------------------------------------------------------ */
-/* pce_path_set / pce_path_get используются в iniram.c / load.c для
- * поиска файлов относительно путей. На RP2350 всё лежит в pce/ на SD.
- * Возвращаем имя файла как есть — sdcard уже открывает из корня. */
 
 void pce_path_set(const char *path) { (void)path; }
-void pce_path_ini(void *ini)        { (void)ini;  }
+void pce_path_ini(void *ini)        { (void)ini; }
 
 char *pce_path_get(const char *name)
 {
     if (name == NULL) return NULL;
-    /* Возвращаем копию — вызывающий сделает free() */
     size_t len = strlen(name);
     char *copy = malloc(len + 1);
     if (copy) memcpy(copy, name, len + 1);
@@ -195,19 +189,6 @@ char *pce_path_get(const char *name)
 }
 
 /* ------------------------------------------------------------------ */
-/* sound driver null stub                                              */
-/* ------------------------------------------------------------------ */
-/* mac_sound_set_driver(ms, NULL) в mac_setup_sound при driver==NULL
- * не вызывается — snd_open не будет дёргаться. Но snd_write(NULL,...)
- * уже проверяет sdrv==NULL и возвращает 1. Никаких доп. стабов не нужно.
- *
- * Когда придёт время интегрировать аудио — реализовать snd_rp2350_open()
- * в отдельном файле и передать имя "rp2350" в mac_setup_sound через INI:
- *   [sound]
- *   driver = rp2350
- */
-
-/* ------------------------------------------------------------------ */
-/* par_verbose (ожидается extern в некоторых arch-файлах)             */
+/* par_verbose                                                         */
 /* ------------------------------------------------------------------ */
 int par_verbose = 0;
