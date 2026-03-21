@@ -214,12 +214,6 @@ endif()
 # Core Emulator Sources
 #=============================================================================
 set(EMU_CORE_SOURCES
-    # RP2350 platform integration
-    src/rp2350_stubs.c
-    src/fatfs_retarget.c
-    src/rp2350_ini.c
-    src/rp2350_mac.c
-
     # Mac arch
     src/arch/macplus/macplus.c
     src/arch/macplus/adb.c
@@ -307,6 +301,13 @@ set(EMU_CORE_SOURCES
 # Main Executable
 #=============================================================================
 add_executable(${BUILD_NAME}
+    # RP2350 platform integration
+    src/rp2350_stubs.c
+    src/fatfs_retarget.c
+    src/rp2350_ini.c
+    src/rp2350_mac.c
+
+    src/tlsf.c
     src/main.c
     src/ini.c
     src/diskui.c

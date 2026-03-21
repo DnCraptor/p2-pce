@@ -37,6 +37,7 @@
 #include "config_save.h"
 #include "vga_osd.h"
 #include "rp2350_mac.h"
+#include "tlsf.h"
 
 #if FEATURE_AUDIO_PWM
 #include <hardware/pwm.h>
@@ -444,6 +445,7 @@ static void __no_inline_not_in_flash_func(reconfigure_clocks)(int cpu_mhz, int p
 // Hardware Initialization
 //=============================================================================
 static void core1_entry(void);
+tlsf_t tlsf;
 static bool init_hardware(void) {
     configure_clocks();
 
@@ -452,7 +454,7 @@ static bool init_hardware(void) {
     psram_init(psram_pin);
     if (!psram_test()) { printf("ERROR: PSRAM test failed!\n"); return false; }
     DBG_PRINT("  PSRAM test passed\n");
-
+    tlsf = tlsf_create_with_pool(psram_get_ptr(), psram_get_size());
 #if DVI_A
 	dvi0.timing = &DVI_TIMING;
 	dvi0.ser_cfg = DVI_DEFAULT_SERIAL_CONFIG;
