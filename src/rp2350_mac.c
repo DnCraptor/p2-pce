@@ -88,16 +88,15 @@ void mac_log_deb(const char *msg, ...)
 /* ------------------------------------------------------------------ */
 /* Инициализация эмулятора                                            */
 /* ------------------------------------------------------------------ */
-
-bool rp2350_mac_init(void)
+const char* rp2350_mac_init(void)
 {
     DBG_PRINT("[mac] Initializing Mac Plus emulator...\n");
 
     /* Загрузить INI с SD */
-    ini_sct_t *cfg = rp2350_load_ini("pce/config.ini");
+    const char* err;
+    ini_sct_t *cfg = rp2350_load_ini("pce/config.ini", &err);
     if (!cfg) {
-        DBG_PRINT("[mac] ERROR: config.ini not found or parse error\n");
-        return false;
+        return err;
     }
 
     /* Найти секцию [macplus] или взять root */
@@ -111,8 +110,7 @@ bool rp2350_mac_init(void)
     ini_sct_del(cfg);
 
     if (!par_sim) {
-        DBG_PRINT("[mac] ERROR: mac_new() failed\n");
-        return false;
+        return "[mac] ERROR: mac_new() failed";
     }
 
     /* Сброс CPU и периферии */
@@ -122,7 +120,7 @@ bool rp2350_mac_init(void)
 
     DBG_PRINT("[mac] Mac Plus ready, PC=0x%08lX\n",
               (unsigned long)e68_get_pc(par_sim->cpu));
-    return true;
+    return NULL;
 }
 
 /* ------------------------------------------------------------------ */

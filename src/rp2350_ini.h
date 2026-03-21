@@ -5,7 +5,7 @@
  * который передаётся в mac_new(). Изолирует libini от fatfs.
  *
  * Использование:
- *   ini_sct_t *cfg = rp2350_load_ini("pce/config.ini");
+ *   ini_sct_t *cfg = rp2350_load_ini("pce/config.ini", &err);
  *   par_sim = mac_new(cfg);
  *   ini_sct_del(cfg);   // после mac_new — cfg больше не нужен
  */
@@ -20,6 +20,6 @@
  * Вызывать после f_mount(). При ошибке возвращает NULL.
  * Вызывающий владеет памятью — освободить через ini_sct_del().
  */
-ini_sct_t *rp2350_load_ini(const char *path);
+ini_sct_t *rp2350_load_ini(const char *path, const char** err);
 
 #endif /* RP2350_INI_H */

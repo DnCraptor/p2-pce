@@ -546,9 +546,10 @@ static bool init_emulator(void) {
     settingsui_init();
 
     DBG_PRINT("Initializing Mac Plus emulator...\n");
-    if (!rp2350_mac_init()) {
+    const char* err = rp2350_mac_init();
+    if (err) {
         show_error_screen(" Emulator Error ",
-                          "Failed to initialize Mac Plus emulator.",
+                          err,
                           "Check pce/config.ini, pce/mac-128k.rom, pce/system.img");
         /* show_error_screen never returns */
     }
