@@ -279,8 +279,24 @@ static void __time_critical_func(render_line)(uint32_t line, uint8_t *output_buf
     }
     const uint8_t* in_buff = rp2350_mac_get_vbuf();
     if (in_buff) {
-    nf_memset(output_buffer, 0x200, SCREEN_WIDTH);
-
+        if (line >= 342) {
+            nf_memset(output_buffer, 0, SCREEN_WIDTH);
+            return;
+        }
+        in_buff += line * 512 / 8; // 512x342
+        for (int col = 0; col < 640/8; ++col) {
+            if (col >= 512/8) {
+                nf_memset(output_buffer, 0, (640/8 - 512/8)/2);
+                break;
+            }
+            register uint8_t glyph = in_buff[col];
+            register uint8_t fg_color = 15;
+            register uint8_t bg_color = 0;
+            ob( ((glyph & 0b00000001) ? fg_color : bg_color) | ((glyph & 0b00000010) ? fg_color : bg_color) );
+            ob( ((glyph & 0b00000100) ? fg_color : bg_color) | ((glyph & 0b00001000) ? fg_color : bg_color) );
+            ob( ((glyph & 0b00010000) ? fg_color : bg_color) | ((glyph & 0b00100000) ? fg_color : bg_color) );
+            ob( ((glyph & 0b01000000) ? fg_color : bg_color) | ((glyph & 0b10000000) ? fg_color : bg_color) );
+        }
         return;
     }
     // mode 0 - blank screen (gray)
