@@ -395,7 +395,7 @@ void mac_run (macplus_t *sim)
 
 		while (sim->pause) {
 			pce_usleep (50UL * 1000UL);
-			trm_check (sim->trm);
+			if (sim->trm != NULL) trm_check (sim->trm);
 		}
 	}
 

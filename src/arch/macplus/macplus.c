@@ -332,7 +332,7 @@ void mac_set_mouse (void *ext, int dx, int dy, unsigned but)
 	}
 
 	if ((sim->mouse_button ^ but) & ~but & 2) {
-		trm_set_msg_trm (sim->trm, "term.release", "1");
+		if (sim->trm != NULL) trm_set_msg_trm (sim->trm, "term.release", "1");
 	}
 
 	old = sim->via_port_b;
@@ -1286,12 +1286,12 @@ void mac_init (macplus_t *sim, ini_sct_t *ini)
 	mac_setup_video (sim, ini);
 
 	pce_load_mem_ini (sim->mem, ini);
-	pce_log_tag (MSG_INF, "MEM:", "DONE");
+	pce_log_tag (MSG_INF, "MEM:", "DONE\n");
 
-	trm_set_msg_trm (sim->trm, "term.title", "pce-macplus");
+	if (sim->trm != NULL) trm_set_msg_trm (sim->trm, "term.title", "pce-macplus");
 
 	mac_clock_discontinuity (sim);
-	pce_log_tag (MSG_INF, "INIT:", "DONE");
+	pce_log_tag (MSG_INF, "INIT:", "DONE\n");
 }
 
 macplus_t *mac_new (ini_sct_t *ini)
