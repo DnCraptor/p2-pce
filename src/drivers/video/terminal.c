@@ -198,6 +198,10 @@ int trm_screenshot (terminal_t *trm, const char *fname)
 
 int trm_set_msg_trm (terminal_t *trm, const char *msg, const char *val)
 {
+	if (trm == NULL) {
+		return (-1);
+	}
+
 	if (strcmp (msg, "term.escape") == 0) {
 		trm_set_escape_str (trm, val);
 		return (0);

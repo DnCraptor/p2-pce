@@ -71,18 +71,17 @@ static uint32_t mac_poll_counter = 0;
 
 void mac_log_deb(const char *msg, ...)
 {
-#ifdef DEBUG_ENABLED
     va_list va;
+    va_start(va, msg);
     if (par_sim && par_sim->cpu) {
         unsigned long pc = e68_get_pc(par_sim->cpu);
-        printf("[%06lX] ", pc & 0xffffff);
+        DBG_PRINT("[%06lX] ", pc & 0xffffff);
     }
-    va_start(va, msg);
-    vprintf(msg, va);
+    /* dbg_vprint из rp2350_stubs.c форматирует в буфер → DBG_PRINT */
+    char buf[256];
+    vsnprintf(buf, sizeof(buf), msg, va);
     va_end(va);
-#else
-    (void)msg;
-#endif
+    DBG_PRINT("%s", buf);
 }
 
 /* ------------------------------------------------------------------ */

@@ -59,6 +59,16 @@
 
 #include <libini/libini.h>
 
+#include "tlsf.h"
+extern tlsf_t tlsf;
+#undef free
+#undef malloc
+#undef calloc
+#undef realloc
+#define free(x) tlsf_free(tlsf, x)
+#define malloc(x) tlsf_malloc(tlsf, x)
+#define calloc(x, y) tlsf_calloc(tlsf, x, y)
+#define realloc(x, y) tlsf_realloc(tlsf, x, y)
 
 /* The CPU is synchronized with real time MAC_CPU_SYNC times per seconds */
 #define MAC_CPU_SYNC 250
@@ -1276,10 +1286,12 @@ void mac_init (macplus_t *sim, ini_sct_t *ini)
 	mac_setup_video (sim, ini);
 
 	pce_load_mem_ini (sim->mem, ini);
+	pce_log_tag (MSG_INF, "MEM:", "DONE");
 
 	trm_set_msg_trm (sim->trm, "term.title", "pce-macplus");
 
 	mac_clock_discontinuity (sim);
+	pce_log_tag (MSG_INF, "INIT:", "DONE");
 }
 
 macplus_t *mac_new (ini_sct_t *ini)
