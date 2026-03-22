@@ -269,6 +269,7 @@ static void init_palettes(void) {
 // ============================================================================
 // DMA Interrupt Handler - Renders each scanline
 // ============================================================================
+const uint8_t* rp2350_mac_get_vbuf(void);
 
 // Dispatch to appropriate renderer based on current mode
 static void __time_critical_func(render_line)(uint32_t line, uint32_t *output_buffer) {
@@ -298,8 +299,42 @@ static void __time_critical_func(render_line)(uint32_t line, uint32_t *output_bu
         osd_render_line_vga(line, output_buffer);
         return;
     }
+    const uint8_t* in_buff = rp2350_mac_get_vbuf();
+    if (in_buff) {
+        if (line >= 342) {
+            goto m0;
+        }
+        uint8_t* ob = (uint8_t*)output_buffer + SHIFT_PICTURE;
+        in_buff += line * 512 / 8; // 512x342
+        register uint8_t fg_color = cga_palette[3];
+        register uint8_t bg_color = cga_palette[0];
+        for (int col = 0; col < 640/8; ++col) {
+            if (col >= 512/8) {
+                *ob++ = TMPL_LINE;
+                *ob++ = TMPL_LINE;
+                *ob++ = TMPL_LINE;
+                *ob++ = TMPL_LINE;
+                *ob++ = TMPL_LINE;
+                *ob++ = TMPL_LINE;
+                *ob++ = TMPL_LINE;
+                *ob++ = TMPL_LINE;
+                continue;
+            }
+            register uint8_t glyph = in_buff[col];
+            *ob++ = ((glyph & 0b00000001) ? fg_color : bg_color);
+            *ob++ = ((glyph & 0b00000010) ? fg_color : bg_color);
+            *ob++ = ((glyph & 0b00000100) ? fg_color : bg_color);
+            *ob++ = ((glyph & 0b00001000) ? fg_color : bg_color);
+            *ob++ = ((glyph & 0b00010000) ? fg_color : bg_color);
+            *ob++ = ((glyph & 0b00100000) ? fg_color : bg_color);
+            *ob++ = ((glyph & 0b01000000) ? fg_color : bg_color);
+            *ob++ = ((glyph & 0b10000000) ? fg_color : bg_color);
+        }
+        return;
+    }
     // mode 0 = blanked (AR bit5 cleared during BIOS mode transitions).
     // Emit black pixels with sync bits so the monitor sees a valid signal.
+m0:
     uint32_t *out32 = (uint32_t *)((uint8_t *)output_buffer + SHIFT_PICTURE);
     uint32_t blank = TMPL_LINE | (TMPL_LINE << 8) | (TMPL_LINE << 16) | (TMPL_LINE << 24);
     for (int i = 0; i < 160; i++) out32[i] = blank;

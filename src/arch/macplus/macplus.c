@@ -1544,14 +1544,12 @@ void mac_realtime_sync (macplus_t *sim, unsigned long n)
 void mac_clock (macplus_t *sim, unsigned n)
 {
 	unsigned long viaclk, clkdiv, cpuclk;
-	DBG_PRINT("mac_clock\n");
 	if (n == 0) {
 		n = sim->cpu->delay;
 		if (n == 0) {
 			n = 1;
 		}
 	}
-	DBG_PRINT("mac_clock: n: %d\n", n);
 
 	if (sim->speed_factor == 0) {
 		cpuclk = n + sim->speed_clock_extra;
