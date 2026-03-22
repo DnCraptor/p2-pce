@@ -28,6 +28,18 @@
 #include <lib/path.h>
 #include <libini/libini.h>
 
+#include "tlsf.h"
+extern tlsf_t tlsf;
+#undef free
+#undef malloc
+#undef calloc
+#undef realloc
+#undef strdup
+#define free(x) tlsf_free(tlsf, x)
+#define malloc(x) tlsf_malloc(tlsf, x)
+#define calloc(x, y) tlsf_calloc(tlsf, x, y)
+#define realloc(x, y) tlsf_realloc(tlsf, x, y)
+#define strdup(x) tlsf_strdup(tlsf, x)
 
 int ini_get_ram (memory_t *mem, ini_sct_t *ini, mem_blk_t **addr0)
 {

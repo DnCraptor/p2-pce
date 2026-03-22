@@ -128,6 +128,7 @@ void mac_video_set_terminal (mac_video_t *mv, terminal_t *trm)
 
 	if (mv->trm != NULL) {
 		trm_open (mv->trm, mv->w, mv->h);
+		trm_set_size (mv->trm, mv->w, mv->h);
 	}
 }
 
@@ -172,69 +173,20 @@ void mac_video_set_vbi (mac_video_t *mv, unsigned char val)
 static
 void mac_video_update (mac_video_t *mv)
 {
-	unsigned            y;
-	unsigned            i, j;
-	unsigned            k, n;
-	const unsigned char *src;
-	unsigned char       *dst, *rgb;
-	unsigned char       col0[3], col1[3];
-
 	if (mv->trm == NULL) {
 		return;
+	}
+
+	if (mv->trm->buf == NULL) {
+		trm_set_size(mv->trm, mv->w, mv->h);
 	}
 
 	if (mv->vbuf == NULL) {
 		return;
 	}
 
-	for (i = 0; i < 3; i++) {
-		col0[i] = (mv->brightness * mv->col0[i]) / 255;
-		col1[i] = (mv->brightness * mv->col1[i]) / 255;
-	}
-
-	trm_set_size (mv->trm, mv->w, mv->h);
-
-	src = mv->vbuf;
-	dst = mv->vcmp;
-	rgb = mv->rgb;
-
-	y = 0;
-	while (y < mv->h) {
-		n = mv->h - y;
-
-		if (n > mv->cmp_cnt) {
-			n = mv->cmp_cnt;
-		}
-
-		k = n * ((mv->w + 7) / 8);
-
-		if (mv->force || (memcmp (dst, src, k) != 0)) {
-			memcpy (dst, src, k);
-
-			j = 0;
-			for (i = 0; i < (8 * k); i++) {
-				if (dst[i >> 3] & (0x80 >> (i & 7))) {
-					rgb[j + 0] = col0[0];
-					rgb[j + 1] = col0[1];
-					rgb[j + 2] = col0[2];
-				}
-				else {
-					rgb[j + 0] = col1[0];
-					rgb[j + 1] = col1[1];
-					rgb[j + 2] = col1[2];
-				}
-
-				j += 3;
-			}
-
-			trm_set_lines (mv->trm, rgb, y, n);
-		}
-
-		src += k;
-		dst += k;
-
-		y += n;
-	}
+	// copy to fast SRAM
+	memcpy(mv->trm->buf, mv->vbuf, mv->w * mv->h / 8);
 
 	mv->force = 0;
 

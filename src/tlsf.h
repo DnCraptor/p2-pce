@@ -63,7 +63,9 @@ void tlsf_remove_pool(tlsf_t tlsf, pool_t pool);
 void* tlsf_malloc(tlsf_t tlsf, size_t bytes);
 void* tlsf_memalign(tlsf_t tlsf, size_t align, size_t bytes);
 void* tlsf_realloc(tlsf_t tlsf, void* ptr, size_t size);
+void* tlsf_calloc(tlsf_t tlsf, size_t size, size_t n);
 void tlsf_free(tlsf_t tlsf, void* ptr);
+char* tlsf_strdup(tlsf_t tlsf, const char* str);
 
 /* Returns internal block size, not original request size */
 size_t tlsf_block_size(void* ptr);

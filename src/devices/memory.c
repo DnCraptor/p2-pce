@@ -25,6 +25,18 @@
 
 #include "memory.h"
 
+#include "tlsf.h"
+extern tlsf_t tlsf;
+#undef free
+#undef malloc
+#undef calloc
+#undef realloc
+#undef strdup
+#define free(x) tlsf_free(tlsf, x)
+#define malloc(x) tlsf_malloc(tlsf, x)
+#define calloc(x, y) tlsf_calloc(tlsf, x, y)
+#define realloc(x, y) tlsf_realloc(tlsf, x, y)
+#define strdup(x) tlsf_strdup(tlsf, x)
 
 int mem_blk_init (mem_blk_t *blk, unsigned long base, unsigned long size, int alloc)
 {

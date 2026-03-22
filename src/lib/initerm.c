@@ -151,14 +151,21 @@ terminal_t *ini_get_terminal (ini_sct_t *ini, const char *def)
 		return (NULL);
 	}
 
+	pce_log_tag (MSG_INF, "TERM:", "esc: [%p]\n", esc);
 	if (esc != NULL) {
+		pce_log_tag (MSG_INF, "TERM:", "esc: %s\n", esc);
 		trm_set_escape_str (trm, esc);
 	}
 
+	pce_log_tag (MSG_INF, "TERM:", "scale: %d\n", scale);
 	trm_set_scale (trm, scale);
+	pce_log_tag (MSG_INF, "TERM:", "min size: %dx%d\n", min_w, min_h);
 	trm_set_min_size (trm, min_w, min_h);
+	pce_log_tag (MSG_INF, "TERM:", "aspect: %dx%d\n", aspect_x, aspect_y);
 	trm_set_aspect_ratio (trm, aspect_x, aspect_y);
+	pce_log_tag (MSG_INF, "TERM:", "mouse scale: %d:%d %d:%d\n", mouse_x[0], mouse_x[1], mouse_y[0], mouse_y[1]);
 	trm_set_mouse_scale (trm, mouse_x[0], mouse_x[1], mouse_y[0], mouse_y[1]);
 
+	pce_log_tag (MSG_INF, "TERM:", "DONE\n");
 	return (trm);
 }

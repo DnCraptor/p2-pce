@@ -44,7 +44,7 @@ option(EMM "Enable LTEMM support" OFF)
 option(USB_HID_ENABLED "Enable USB HID keyboard (disables USB CDC stdio)" ON)
 
 # Debug output
-option(DEBUG_ENABLED "Enable verbose debug output" ON)
+option(DEBUG_ENABLED "Enable verbose debug output" OFF)
 
 # Profiling
 option(PROFILE_ENABLED "Enable instruction profiling" OFF)

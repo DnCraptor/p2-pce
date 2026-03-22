@@ -662,15 +662,15 @@ int main(void) {
         while (true) sleep_ms(1000);
     }
 
+    if (*(uint32_t*)(0x20000000 + (512ul << 10) - 32) != 0x1927fa52)
+        show_welcome_screen();
+
     if (!init_emulator()) {
         printf("\nEmulator initialization failed!\n");
         while (true) sleep_ms(1000);
     }
 
     initialized = true;
-
-    if (*(uint32_t*)(0x20000000 + (512ul << 10) - 32) != 0x1927fa52)
-        show_welcome_screen();
 
     DBG_PRINT("\nStarting emulation...\n");
 

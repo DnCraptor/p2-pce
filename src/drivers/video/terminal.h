@@ -201,16 +201,6 @@ void trm_set_aspect_ratio (terminal_t *trm, unsigned x, unsigned y);
 void trm_set_pixel (terminal_t *trm, unsigned x, unsigned y, const unsigned char *col);
 
 /*!***************************************************************************
- * @short Set lines in the terminal buffer
- * @param buf The RGB source buffer, 3 bytes per pixel
- * @param y   The first line in the terminal buffer
- * @param cnt The number of lines
- *
- * The buffer width is implicit, as set by trm_set_size().
- *****************************************************************************/
-void trm_set_lines (terminal_t *trm, const void *buf, unsigned y, unsigned cnt);
-
-/*!***************************************************************************
  * @short Update the screen from the terminal buffer
  *****************************************************************************/
 void trm_update (terminal_t *trm);

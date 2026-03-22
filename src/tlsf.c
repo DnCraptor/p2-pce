@@ -1120,6 +1120,16 @@ void* tlsf_malloc(tlsf_t tlsf, size_t size)
 	return block_prepare_used(control, block, adjust);
 }
 
+char* tlsf_strdup(tlsf_t tlsf, const char* str) {
+	if (!str) return 0;
+	size_t sz = strlen(str) + 1;
+	char* res = (char*)tlsf_malloc(tlsf, sz);
+	if (!res) return 0;
+	memcpy(res, str, sz);
+	return res;
+}
+
+
 void* tlsf_memalign(tlsf_t tlsf, size_t align, size_t size)
 {
 	control_t* control = tlsf_cast(control_t*, tlsf);
@@ -1177,11 +1187,23 @@ void* tlsf_memalign(tlsf_t tlsf, size_t align, size_t size)
 	return block_prepare_used(control, block, adjust);
 }
 
+void* tlsf_calloc(tlsf_t tlsf, size_t size, size_t n) {
+	void* res = tlsf_memalign(tlsf, 4, size * n); // ensure we are ok on 32-bit operation
+	if (!res) return 0;
+	memset(res, 0, size * n);
+	return res;
+}
+
 void tlsf_free(tlsf_t tlsf, void* ptr)
 {
 	/* Don't attempt to free a NULL pointer. */
 	if (ptr)
 	{
+		if ((unsigned long)ptr >= 0x20000000ul) { // SRAM allocated W/A
+			// TODO: log warn
+			free(ptr);
+			return;
+		}
 		control_t* control = tlsf_cast(control_t*, tlsf);
 		block_header_t* block = block_from_ptr(ptr);
 		tlsf_assert(!block_is_free(block) && "block already marked as free");

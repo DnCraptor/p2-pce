@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <drivers/video/terminal.h>
+#include "debug.h"
 
 
 #define TRM_ESC_ESC  1
@@ -234,8 +235,9 @@ void trm_set_size (terminal_t *trm, unsigned w, unsigned h)
 {
 	unsigned long cnt;
 
+	DBG_PRINT("trm_set_size: %dx%d\n", w, h);
 	if ((w == 0) || (h == 0)) {
-		free (trm->buf);
+		if (trm->buf) free (trm->buf);
 
 		trm->buf_cnt = 0;
 		trm->buf = NULL;
@@ -250,7 +252,7 @@ void trm_set_size (terminal_t *trm, unsigned w, unsigned h)
 		return;
 	}
 
-	cnt = 3 * (unsigned long) w * (unsigned long) h;
+	cnt = (unsigned long) w * (unsigned long) h / 8;
 
 	if (trm->buf_cnt != cnt) {
 		unsigned char *tmp;
@@ -332,65 +334,6 @@ void trm_set_pixel (terminal_t *trm, unsigned x, unsigned y, const unsigned char
 
 		if (y >= (trm->update_y + trm->update_h)) {
 			trm->update_h = y - trm->update_y + 1;
-		}
-	}
-}
-
-void trm_set_lines (terminal_t *trm, const void *buf, unsigned y, unsigned cnt)
-{
-	unsigned long       w3, tmp;
-	const unsigned char *src;
-	unsigned char       *dst;
-
-	w3 = 3UL * trm->w;
-
-	src = buf;
-	dst = trm->buf + w3 * y;
-
-	while (cnt > 0) {
-		if (memcmp (dst, src, w3) != 0) {
-			break;
-		}
-
-		src += w3;
-		dst += w3;
-		y += 1;
-		cnt -= 1;
-	}
-
-	tmp = cnt * w3;
-
-	while (cnt > 0) {
-		tmp -= w3;
-
-		if (memcmp (dst + tmp, src + tmp, w3) != 0) {
-			break;
-		}
-
-		cnt -= 1;
-	}
-
-	if (cnt == 0) {
-		return;
-	}
-
-	memcpy (dst, src, w3 * cnt);
-
-	trm->update_x = 0;
-	trm->update_w = trm->w;
-
-	if (trm->update_h == 0) {
-		trm->update_y = y;
-		trm->update_h = cnt;
-	}
-	else {
-		if (y < trm->update_y) {
-			trm->update_h += trm->update_y - y;
-			trm->update_y = y;
-		}
-
-		if ((y + cnt) > (trm->update_y + trm->update_h)) {
-			trm->update_h = (y + cnt) - trm->update_y;
 		}
 	}
 }

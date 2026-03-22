@@ -163,6 +163,11 @@ bool rp2350_mac_is_running(void) { return mac_running; }
 
 macplus_t *rp2350_mac_get_sim(void) { return par_sim; }
 
+const unsigned char* __not_in_flash_func(rp2350_mac_get_vbuf)(void) {
+    if (!par_sim || !par_sim->video || !par_sim->video->trm) return NULL;
+    return par_sim->video->trm->buf;
+}
+
 /* ------------------------------------------------------------------ */
 /* Linux evdev keycode → pce_key_t                                    */
 /* ------------------------------------------------------------------ */

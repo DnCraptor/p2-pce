@@ -271,9 +271,17 @@ void __time_critical_func(osd_render_line_hdmi)(uint32_t line, uint8_t *output_b
     }
 }
 
+const uint8_t* rp2350_mac_get_vbuf(void);
+
 static void __time_critical_func(render_line)(uint32_t line, uint8_t *output_buffer) {
     if (osd_is_visible()) {
         return osd_render_line_hdmi(line, output_buffer);
+    }
+    const uint8_t* in_buff = rp2350_mac_get_vbuf();
+    if (in_buff) {
+    nf_memset(output_buffer, 0x200, SCREEN_WIDTH);
+
+        return;
     }
     // mode 0 - blank screen (gray)
     nf_memset(output_buffer, 0x77, SCREEN_WIDTH);

@@ -34,6 +34,7 @@
 #include "sony.h"
 #include "sound.h"
 #include "video.h"
+#include "debug.h"
 
 #include <string.h>
 
@@ -65,10 +66,12 @@ extern tlsf_t tlsf;
 #undef malloc
 #undef calloc
 #undef realloc
+#undef strdup
 #define free(x) tlsf_free(tlsf, x)
 #define malloc(x) tlsf_malloc(tlsf, x)
 #define calloc(x, y) tlsf_calloc(tlsf, x, y)
 #define realloc(x, y) tlsf_realloc(tlsf, x, y)
+#define strdup(x) tlsf_strdup(tlsf, x)
 
 /* The CPU is synchronized with real time MAC_CPU_SYNC times per seconds */
 #define MAC_CPU_SYNC 250
@@ -669,7 +672,7 @@ void mac_setup_cpu (macplus_t *sim, ini_sct_t *ini)
 	ini_get_string (sct, "model", &model, "68000");
 	ini_get_uint16 (sct, "speed", &speed, 0);
 
-	pce_log_tag (MSG_INF, "CPU:", "model=%s speed=%d\n", model, speed);
+	pce_log_tag (MSG_INF, "CPU:", "model=%s [%p] speed=%d\n", model, model, speed);
 
 	sim->cpu = e68_new();
 	if (sim->cpu == NULL) {
@@ -677,7 +680,7 @@ void mac_setup_cpu (macplus_t *sim, ini_sct_t *ini)
 	}
 
 	if (mac_set_cpu_model (sim, model)) {
-		pce_log (MSG_ERR, "*** unknown cpu model (%s)\n", model);
+		pce_log (MSG_ERR, "*** unknown cpu model (%s [%p])\n", model, model);
 	}
 
 	e68_set_mem_fct (sim->cpu, sim->mem,
@@ -1183,11 +1186,14 @@ void mac_setup_video (macplus_t *sim, ini_sct_t *ini)
 	}
 
 	sct = ini_next_sct (ini, NULL, "video");
+	pce_log_tag (MSG_INF, "VIDEO:", "sct [%p]\n", sct);
 
 	addr1 = mem_blk_get_size (sim->ram);
+	pce_log_tag (MSG_INF, "VIDEO:", "addr1 [%p]\n", addr1);
 	addr1 = (addr1 < 0x5900) ? 0 : (addr1 - 0x5900);
 
 	ini_get_uint32 (sct, "address", &addr2, addr1);
+	pce_log_tag (MSG_INF, "VIDEO:", "addr2 [%p]\n", addr2);
 	ini_get_uint16 (sct, "width", &w, 512);
 	ini_get_uint16 (sct, "height", &h, 342);
 	ini_get_uint32 (sct, "color0", &col0, 0);
@@ -1538,13 +1544,14 @@ void mac_realtime_sync (macplus_t *sim, unsigned long n)
 void mac_clock (macplus_t *sim, unsigned n)
 {
 	unsigned long viaclk, clkdiv, cpuclk;
-
+	DBG_PRINT("mac_clock\n");
 	if (n == 0) {
 		n = sim->cpu->delay;
 		if (n == 0) {
 			n = 1;
 		}
 	}
+	DBG_PRINT("mac_clock: n: %d\n", n);
 
 	if (sim->speed_factor == 0) {
 		cpuclk = n + sim->speed_clock_extra;

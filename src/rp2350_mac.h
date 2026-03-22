@@ -29,6 +29,7 @@ void rp2350_mac_step(void);
 /** Текущее состояние эмулятора */
 bool       rp2350_mac_is_running(void);
 macplus_t *rp2350_mac_get_sim(void);
+const unsigned char *rp2350_mac_get_vbuf(void);
 
 /**
  * Передать нажатие/отпускание клавиши.

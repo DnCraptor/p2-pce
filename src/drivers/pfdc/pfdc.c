@@ -32,10 +32,12 @@ extern tlsf_t tlsf;
 #undef malloc
 #undef calloc
 #undef realloc
+#undef strdup
 #define free(x) tlsf_free(tlsf, x)
 #define malloc(x) tlsf_malloc(tlsf, x)
 #define calloc(x, y) tlsf_calloc(tlsf, x, y)
 #define realloc(x, y) tlsf_realloc(tlsf, x, y)
+#define strdup(x) tlsf_strdup(tlsf, x)
 
 pfdc_sct_t *pfdc_sct_new (unsigned c, unsigned h, unsigned s, unsigned n)
 {
